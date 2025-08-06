@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOF Database Viewer</title>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 95%;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .dataTables_wrapper {
+            margin-top: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .dataTables_scrollBody {
+            max-height: 400px !important;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .structure-link {
+            color: #007bff;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }
+        .modal-content {
+            position: relative;
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            width: 80%;
+            height: 80%;
+            border-radius: 8px;
+        }
+        .close {
+            position: absolute;
+            right: 10px;
+            top: 5px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: #000;
+        }
+        .filters {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .filter-select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            min-width: 150px;
+        }
+        .filter-select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        .filter-button {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .filter-button:hover {
+            background-color: #0056b3;
+        }
+        #resetFilters {
+            background-color: #6c757d;
+        }
+        #resetFilters:hover {
+            background-color: #545b62;
+        }
+        .table-section {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .visualization-controls {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .plot-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .plot-control {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .plot-select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            min-width: 200px;
+        }
+        .plot-select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        #scatterPlot {
+            width: 100%;
+            height: 500px;
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MOF Database Viewer</h1>
+        <div class="filters">
+            <select id="coordinateFilter" class="filter-select">
+                <option value="">All Coordinates</option>
+            </select>
+            <select id="nodeFilter" class="filter-select">
+                <option value="">All Nodes</option>
+            </select>
+            <select id="linkerFilter" class="filter-select">
+                <option value="">All Linkers</option>
+            </select>
+            <select id="topologyFilter" class="filter-select">
+                <option value="">All Topologies</option>
+            </select>
+            <select id="substituentFilter" class="filter-select">
+                <option value="">All Substituents</option>
+            </select>
+            <select id="metalFilter" class="filter-select">
+                <option value="">All Metals</option>
+            </select>
+            <button id="applyFilters" class="filter-button">Apply Filters</button>
+            <button id="resetFilters" class="filter-button">Reset Filters</button>
+        </div>
+        <div class="table-section">
+            <table id="mofTable" class="display" width="100%"></table>
+        </div>
+        <div class="visualization-controls">
+            <h3>Scatter Plot Controls</h3>
+            <div class="plot-filters">
+                <div class="plot-control">
+                    <label for="xAxis">X-Axis:</label>
+                    <select id="xAxis" class="plot-select"></select>
+                </div>
+                <div class="plot-control">
+                    <label for="yAxis">Y-Axis:</label>
+                    <select id="yAxis" class="plot-select"></select>
+                </div>
+                <div class="plot-control">
+                    <label for="colorBy">Color By:</label>
+                    <select id="colorBy" class="plot-select"></select>
+                </div>
+                <div class="plot-control">
+                    <label for="sizeBy">Size By:</label>
+                    <select id="sizeBy" class="plot-select"></select>
+                </div>
+                <button id="updatePlot" class="filter-button">Update Plot</button>
+            </div>
+            <div id="scatterPlot"></div>
+            <div id="pointDetails" style="display: none; margin-top: 20px; padding: 15px; background-color: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+                <h3>Selected Point Details</h3>
+                <div id="detailsContent" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Structure Modal -->
+    <div id="structureModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="viewer" style="width: 100%; height: 90%;"></div>
+        </div>
+    </div>
+        </div>
+    </div>
+
+    <script>
+        let table;
+
+        // Load and process CSV data
+        fetch('data/data.csv')
+            .then(response => response.text())
+            .then(csv => {
+                // Split lines and filter out empty lines
+                const lines = csv.split('\n').filter(line => line.trim() !== '');
+                const headers = lines[0].split(',').map(header => header.trim());
+                
+                // Process data with validation
+                const data = lines.slice(1)
+                    .map(line => {
+                        const values = line.split(',');
+                        const obj = {};
+                        headers.forEach((header, index) => {
+                            let value = values[index] ? values[index].trim() : '';
+                            
+                            // Parse array strings for pressure, isotherm and Sips
+                            if (['pressure', 'isotherm', 'Sips'].includes(header) && value.startsWith('[')) {
+                                try {
+                                    value = JSON.parse(value.replace(/\s/g, ''));
+                                } catch (e) {
+                                    console.error(`Error parsing ${header} array:`, e);
+                                    value = [];
+                                }
+                            }
+                            obj[header] = value;
+                        });
+                        return obj;
+                    })
+                    .filter(row => Object.values(row).some(value => value !== '')); // Remove empty rows
+
+                // Populate filter dropdowns
+                const filterFields = ['coordinate', 'node', 'linker', 'topology', 'substituent', 'metal'];
+                filterFields.forEach(field => {
+                    const uniqueValues = [...new Set(data.map(item => item[field]))].sort();
+                    const select = document.getElementById(field + 'Filter');
+                    uniqueValues.forEach(value => {
+                        const option = document.createElement('option');
+                        option.value = value;
+                        option.textContent = value;
+                        select.appendChild(option);
+                    });
+                });
+
+                // Initialize DataTable
+                table = $('#mofTable').DataTable({
+                    data: data,
+                    scrollX: true,
+                    scrollY: true,
+                    scrollCollapse: true,
+                    paging: true,
+                    columns: headers.map(header => ({
+                        title: header,
+                        data: header,
+                        render: function(data, type, row) {
+                            if (header === 'label') {
+                                return `<span class="structure-link">${data}</span>`;
+                            }
+                            return data;
+                        }
+                    }))
+                });
+
+                // Apply filters function
+                function applyFilters() {
+                    const filters = {};
+                    filterFields.forEach(field => {
+                        const value = document.getElementById(field + 'Filter').value;
+                        if (value) {
+                            filters[field] = value;
+                        }
+                    });
+
+                    // Clear existing search functions
+                    $.fn.dataTable.ext.search = [];
+
+                    // Add new filter function
+                    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+                        const rowData = table.row(dataIndex).data();
+                        return Object.entries(filters).every(([field, value]) => 
+                            rowData[field] === value
+                        );
+                    });
+
+                    table.draw();
+                }
+
+                // Reset filters function
+                function resetFilters() {
+                    filterFields.forEach(field => {
+                        document.getElementById(field + 'Filter').value = '';
+                    });
+                    $.fn.dataTable.ext.search = [];
+                    table.draw();
+                }
+
+                // Add button click handlers
+                document.getElementById('applyFilters').addEventListener('click', applyFilters);
+                document.getElementById('resetFilters').addEventListener('click', resetFilters);
+
+                // Initialize plot controls
+                const plotFields = [
+                    'CO2 content', 'CO2 capacity', 'q_m', 'Unitcell_volume', 'Density',
+                    'void_fraction', 'AV_cm^3/g', 'ASA_m^2/cm^3', 'ASA_m^2/g', 'NASA_m^2/g',
+                    'lcd', 'pld', 'CO2 utilization'
+                ];
+
+                // Function to update available options in dropdowns
+                function updatePlotDropdowns(changedId) {
+                    // Get all currently selected values
+                    const selectedValues = {
+                        xAxis: document.getElementById('xAxis').value,
+                        yAxis: document.getElementById('yAxis').value,
+                        colorBy: document.getElementById('colorBy').value,
+                        sizeBy: document.getElementById('sizeBy').value
+                    };
+
+                    // Update each dropdown
+                    plotControls.forEach(control => {
+                        const select = document.getElementById(control);
+                        if (control !== changedId) { // Don't update the dropdown that triggered the change
+                            const currentValue = select.value;
+                            select.innerHTML = '<option value="">None</option>' + 
+                                plotFields
+                                    .filter(field => !Object.values(selectedValues).includes(field) || field === currentValue)
+                                    .map(field => 
+                                        `<option value="${field}" ${field === currentValue ? 'selected' : ''}>${field}</option>`
+                                    ).join('');
+                        }
+                    });
+                }
+
+                // Populate initial plot control dropdowns
+                const plotControls = ['xAxis', 'yAxis', 'colorBy', 'sizeBy'];
+                plotControls.forEach(control => {
+                    const select = document.getElementById(control);
+                    select.innerHTML = '<option value="">None</option>' + 
+                        plotFields.map(field => 
+                            `<option value="${field}">${field}</option>`
+                        ).join('');
+                    
+                    // Add change event listener
+                    select.addEventListener('change', () => updatePlotDropdowns(control));
+                });
+
+                // Set default values
+                document.getElementById('xAxis').value = 'CO2 content';
+                document.getElementById('yAxis').value = 'CO2 capacity';
+                document.getElementById('colorBy').value = 'AV_cm^3/g';
+                document.getElementById('sizeBy').value = 'pld';
+                updatePlotDropdowns(null); // Update dropdowns with initial values
+                
+                // Update plot immediately without clicking button
+                updateScatterPlot();
+
+                // Function to update the scatter plot
+                function updateScatterPlot() {
+                    const xAxis = document.getElementById('xAxis').value;
+                    const yAxis = document.getElementById('yAxis').value;
+                    const colorBy = document.getElementById('colorBy').value;
+                    const sizeBy = document.getElementById('sizeBy').value;
+
+                    // Get filtered data from the table
+                    const filteredData = table.rows({ search: 'applied' }).data().toArray();
+
+                    const trace = {
+                        type: 'scatter',
+                        mode: 'markers',
+                        x: filteredData.map(row => parseFloat(row[xAxis])),
+                        y: filteredData.map(row => parseFloat(row[yAxis])),
+                        text: filteredData.map(row => row.label),
+                        hovertemplate: 
+                            `${xAxis}: %{x}<br>` +
+                            `${yAxis}: %{y}<br>` +
+                            'Label: %{text}<br>' +
+                            '<extra></extra>',
+                        marker: {
+                            size: sizeBy ? filteredData.map(row => parseFloat(row[sizeBy]) * 20 / Math.max(...filteredData.map(row => parseFloat(row[sizeBy])))) : 10,
+                            color: colorBy ? filteredData.map(row => parseFloat(row[colorBy])) : null,
+                            colorscale: 'Viridis',
+                            showscale: !!colorBy
+                        }
+                    };
+
+                    const layout = {
+                        title: `${yAxis} vs ${xAxis}`,
+                        xaxis: { title: xAxis },
+                        yaxis: { title: yAxis },
+                        hovermode: 'closest'
+                    };
+
+                    Plotly.newPlot('scatterPlot', [trace], layout);
+
+                    // Add click event to points
+                    document.getElementById('scatterPlot').on('plotly_click', function(data) {
+                        const pointIndex = data.points[0].pointIndex;
+                        const pointData = filteredData[pointIndex];
+                        
+                        // Show details section
+                        const detailsDiv = document.getElementById('pointDetails');
+                        const detailsContent = document.getElementById('detailsContent');
+                        detailsDiv.style.display = 'block';
+                        
+                        // Clear previous content
+                        detailsContent.innerHTML = '';
+                        
+                        // Add all properties
+                        const orderedKeys = [
+                            'label', 'coordinate', 'node', 'linker', 'topology', 'substituent', 'metal',
+                            'CO2 content', 'CO2 capacity', 'q_m', 'Unitcell_volume', 'Density',
+                            'void_fraction', 'AV_cm^3/g', 'ASA_m^2/cm^3', 'ASA_m^2/g', 'NASA_m^2/g',
+                            'lcd', 'pld', 'CO2 utilization'
+                        ];
+
+                        // Create isotherm plot div if isotherm data exists
+                        if (Array.isArray(pointData.pressure) && Array.isArray(pointData.isotherm)) {
+                            const isothermDiv = document.createElement('div');
+                            isothermDiv.style.padding = '10px';
+                            isothermDiv.style.backgroundColor = '#f8f9fa';
+                            isothermDiv.style.borderRadius = '4px';
+                            isothermDiv.style.marginBottom = '15px';
+                            isothermDiv.style.height = '400px';
+                            detailsContent.appendChild(isothermDiv);
+
+                            // Plot isotherm
+                            const isothermTrace = {
+                                type: 'scatter',
+                                mode: 'lines+markers',
+                                x: pointData.pressure,
+                                y: pointData.isotherm,
+                                name: 'Isotherm',
+                                line: { color: '#007bff' }
+                            };
+
+                            const isothermLayout = {
+                                title: 'CO2 Isotherm',
+                                xaxis: {
+                                    title: 'Pressure (Pa)',
+                                    type: 'log'
+                                },
+                                yaxis: {
+                                    title: 'CO2 Uptake (mol/kg)',
+                                },
+                                showlegend: true
+                            };
+
+                            Plotly.newPlot(isothermDiv, [isothermTrace], isothermLayout);
+                        }
+
+                        // Add properties in specified order
+                        orderedKeys.forEach(key => {
+                            if (key in pointData && !['pressure', 'isotherm'].includes(key)) {
+                                const detailItem = document.createElement('div');
+                                detailItem.style.padding = '10px';
+                                detailItem.style.backgroundColor = '#f8f9fa';
+                                detailItem.style.borderRadius = '4px';
+                                detailItem.innerHTML = `
+                                    <strong>${key}:</strong>
+                                    <span style="color: #666;">${Array.isArray(pointData[key]) ? '[...]' : pointData[key]}</span>
+                                `;
+                                detailsContent.appendChild(detailItem);
+                            }
+                        });
+
+                        // Add download button after properties
+                        const downloadDiv = document.createElement('div');
+                        downloadDiv.style.padding = '10px';
+                        downloadDiv.style.marginTop = '10px';
+                        downloadDiv.style.backgroundColor = '#f8f9fa';
+                        downloadDiv.style.borderRadius = '4px';
+                        downloadDiv.style.textAlign = 'right';
+                        
+                        const downloadButton = document.createElement('button');
+                        downloadButton.className = 'filter-button';
+                        downloadButton.innerHTML = 'Download CIF';
+                        downloadButton.onclick = function() {
+                            const structureId = pointData.label;
+                            fetch(`data/structures/${structureId}.cif`)
+                                .then(response => response.text())
+                                .then(content => {
+                                    const blob = new Blob([content], { type: 'text/plain' });
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `${structureId}.cif`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    window.URL.revokeObjectURL(url);
+                                });
+                        };
+                        downloadDiv.appendChild(downloadButton);
+                        detailsContent.appendChild(downloadDiv);
+                    });
+                }
+
+                // Add event listener for plot update button
+                document.getElementById('updatePlot').addEventListener('click', updateScatterPlot);
+            });
+
+        // Modal handling
+        const modal = document.getElementById('structureModal');
+        const span = document.getElementsByClassName('close')[0];
+
+        span.onclick = function() {
+            modal.style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Structure visualization for table clicks
+        $('#mofTable').on('click', '.structure-link', function() {
+            const structureId = $(this).text();
+            const filePath = `data/structures/${structureId}.cif`;
+
+            modal.style.display = 'block';
+            
+            fetch(filePath)
+                .then(response => response.text())
+                .then(content => {
+                    let viewer = $3Dmol.createViewer('viewer', {
+                        backgroundColor: 'white'
+                    });
+                    
+                    viewer.addModel(content, "cif");
+                    // Set style for atoms (balls) and bonds (sticks)
+                    viewer.setStyle({}, {
+                        sphere: { radius: 0.3 },  // Atoms as balls
+                        stick: { radius: 0.2 }    // Bonds as sticks
+                    });
+                    // Add unit cell box
+                    viewer.addUnitCell({
+                        box: true,        // Show box
+                        lineWidth: 2,     // Line thickness
+                        lineColor: 'darkgray', // Box color
+                        alpha: 0.8        // Opacity
+                    });
+
+                    // Add crystallographic axis labels
+                    viewer.addLabel("a", {
+                        position: {x: 2, y: 0, z: 0},
+                        color: 'red',
+                        fontSize: 14
+                    });
+                    viewer.addLabel("b", {
+                        position: {x: 0, y: 2, z: 0},
+                        color: 'green',
+                        fontSize: 14
+                    });
+                    viewer.addLabel("c", {
+                        position: {x: 0, y: 0, z: 2},
+                        color: 'blue',
+                        fontSize: 14
+                    });
+
+                    viewer.setBackgroundColor('white');  // White background
+                    viewer.zoomTo();      // Center and zoom to fit
+                    viewer.render();      // Render the scene
+                })
+                .catch(error => {
+                    alert(`Error loading structure: ${error}`);
+                });
+        });
+    </script>
+</body>
+</html>
