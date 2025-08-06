@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Database for 2-level CO2 utilization</title>
+    <title>Database for two-level CO2 utilization</title>
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -11,42 +11,58 @@
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css">
     <style>
+        :root {
+            --primary-color: #F76C6C;
+            --primary-light: #F8B4B4;
+            --secondary-color: #d9e4ec;
+            --text-color: #374785;
+            --background-color: #F8F9FA;
+            --card-background: #ffffff;
+            --accent-color: #24305E;
+            --hover-color: #F24949;
+        }
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', 'Helvetica Neue', sans-serif;
+            /* font-family: 'Helvetica Neue', 'Arial', sans-serif; */
             margin: 20px;
-            background-color: #f5f5f5;
+            background-color: var(--background-color);
+            color: var(--text-color);
         }
         .container {
             max-width: 95%;
             margin: 0 auto;
-            background-color: white;
+            background-color: var(--card-background);
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
         .subtitle {
-            color: #666;
+            color: var(--primary-color);
             text-align: center;
             margin-bottom: 30px;
             font-size: 1.5em;
+            font-weight: 300;
         }
         .explanation {
             margin: 20px 0 40px;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            line-height: 1.6;
+            padding: 25px;
+            background-color: var(--secondary-color);
+            border-radius: 12px;
+            line-height: 1.8;
         }
         .citation {
-            margin-top: 10px;
+            margin-top: 15px;
             font-style: italic;
-            color: #666;
+            color: var(--text-color);
+            opacity: 0.8;
         }
         .citation a {
-            color: #007bff;
+            color: var(--primary-color);
             text-decoration: none;
+            transition: color 0.3s ease;
         }
         .citation a:hover {
+            color: var(--hover-color);
             text-decoration: underline;
         }
         .dataTables_wrapper {
@@ -58,42 +74,50 @@
             max-height: 400px !important;
         }
         h1 {
-            color: #333;
+            color: var(--accent-color);
             text-align: center;
             margin-bottom: 20px;
+            font-weight: 600;
         }
         .structure-link {
-            color: #007bff;
+            color: var(--primary-color);
             text-decoration: underline;
             cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        .structure-link:hover {
+            color: var(--hover-color);
         }
         .modal {
             display: none;
             position: fixed;
-            z-index: 1;
+            z-index: 1000;
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.7);
+            background-color: rgba(55, 71, 133, 0.4);
+            backdrop-filter: blur(4px);
         }
         .modal-content {
             position: relative;
-            background-color: #fefefe;
-            margin: 5% auto;
+            background-color: var(--card-background);
+            margin: 2% auto;
             padding: 20px;
-            width: 80%;
-            height: 80%;
-            border-radius: 8px;
+            width: 600px;
+            height: 600px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
         }
         .close {
             position: absolute;
-            right: 10px;
-            top: 5px;
-            font-size: 28px;
+            right: 15px;
+            top: 10px;
+            font-size: 24px;
             font-weight: bold;
-            color: #333;
+            color: var(--text-color);
             cursor: pointer;
+            z-index: 2;
         }
         .close:hover {
             color: #000;
@@ -105,46 +129,54 @@
             flex-wrap: wrap;
         }
         .filter-select {
-            padding: 8px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--accent-color);
             min-width: 150px;
+            background-color: var(--card-background);
+            color: var(--text-color);
+            transition: all 0.3s ease;
         }
         .filter-select:focus {
             outline: none;
-            border-color: #007bff;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(212, 163, 115, 0.1);
+        }
+        .filter-select:hover {
+            border-color: var(--primary-color);
         }
         .filter-button {
-            padding: 8px 16px;
-            border-radius: 4px;
+            padding: 10px 20px;
+            border-radius: 6px;
             border: none;
-            background-color: #007bff;
+            background-color: var(--primary-color);
             color: white;
             cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.3s;
+            font-weight: 500;
+            transition: all 0.3s ease;
         }
         .filter-button:hover {
-            background-color: #0056b3;
+            background-color: var(--hover-color);
+            transform: translateY(-1px);
         }
         #resetFilters {
-            background-color: #6c757d;
+            background-color: var(--accent-color);
         }
         #resetFilters:hover {
-            background-color: #545b62;
+            background-color: var(--hover-color);
         }
         .table-section {
-            margin: 20px 0;
-            padding: 10px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin: 25px 0;
+            padding: 20px;
+            background-color: var(--card-background);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
         .visualization-controls {
             margin: 30px 0;
-            padding: 20px;
-            background-color: #f8f9fa;
-            border-radius: 8px;
+            padding: 25px;
+            background-color: var(--secondary-color);
+            border-radius: 12px;
             position: relative;
             width: 100%;
             box-sizing: border-box;
@@ -162,13 +194,16 @@
         }
         .plot-select {
             padding: 8px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
+            border-radius: 6px;
+            border: 1px solid var(--secondary-color);
             min-width: 200px;
+            color: var(--text-color);
+            transition: all 0.3s ease;
         }
         .plot-select:focus {
             outline: none;
-            border-color: #007bff;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(247, 108, 108, 0.1);
         }
         #scatterPlot {
             width: 100%;
@@ -182,12 +217,21 @@
 </head>
 <body>
     <div class="container">
-        <h1>Database for 2-level CO2 utilization</h1>
-        <div class="subtitle">CO2 to Metal organic framework</div>
+        <h1>Database for Two-level CO<sub>2</sub> Utilization</h1>
+        <div class="subtitle">CO<sub>2</sub> derived Metal Organic Framework</div>
         <div class="explanation">
-            <p>The reducing of CO2 emission is urgent issue for us. The development of new material that yield high potential on capturing CO2 from atmosphere is urgently needed. One of the most promising solid sorbent is metal organic framework (MOF) family composing of metal node and organic ligands in a certain topology corresponding to the coordination around metal node.</p>
-            <p>In this database, we proposed the concept of 2-level CO2 utilization, when the first step is the conversion of CO2 into the ligand for MOFs following by the second step where those MOFs are used as CO2 sorbent. The total value for the utilization is considered as a total value of CO2 content in MOF structure and CO2 capacity inside the pore structure.</p>
-            <p class="citation">Reference: <a href="https://doi.org/10.1016/j.cej.2024.150248" target="_blank">P Mano, S Namuangruk, Chemical Engineering Journal 486, 150248</a></p>
+            <p>The reducing of CO<sub>2</sub> emission is urgent issue for us. 
+                The development of new material that yield high potential on capturing 
+                CO<sub>2</sub> from atmosphere is urgently needed. 
+                One of the most promising solid sorbent is metal organic framework (MOF) 
+                family composing of metal node and organic ligands in a certain 
+                topology corresponding to the coordination around metal node.</p>
+            <p>In this database, we proposed the concept of two-level CO<sub>2</sub> utilization, 
+                when the first step is the conversion of CO<sub>2</sub> into the ligand for 
+                MOFs following by the second step where those MOFs are used as CO<sub>2</sub> sorbent. 
+                The total value for the utilization is considered as a total value of CO<sub>2</sub> content 
+                in MOF structure and CO<sub>2</sub> capacity inside the pore structure.</p>
+            <p class="citation">[Ref]: <a href="https://doi.org/10.1016/j.cej.2024.150248" target="_blank">P Mano, S Namuangruk, Chemical Engineering Journal 486, 150248</a></p>
         </div>
         <div class="filters">
             <select id="coordinateFilter" class="filter-select">
@@ -236,8 +280,8 @@
                 <button id="updatePlot" class="filter-button">Update Plot</button>
             </div>
             <div id="scatterPlot"></div>
-            <div id="pointDetails" style="display: none; margin-top: 20px; padding: 15px; background-color: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative;">
-                <h3 style="margin-bottom: 20px;">Selected Point Details</h3>
+            <div id="pointDetails" style="display: none; margin-top: 20px; padding: 20px; background-color: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(55, 71, 133, 0.1); position: relative;">
+                <h3 style="margin-bottom: 20px; color: var(--accent-color);">Selected Point Details</h3>
                 <div id="detailsContent" style="display: flex; flex-direction: row; gap: 20px; min-height: 500px;"></div>
             </div>
         </div>
@@ -247,7 +291,7 @@
     <div id="structureModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <div id="viewer" style="width: 100%; height: 90%;"></div>
+            <div id="viewer" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; border-radius: 12px;"></div>
         </div>
     </div>
         </div>
@@ -411,6 +455,177 @@
                 // Update plot immediately without clicking button
                 updateScatterPlot();
 
+                // Set default point details for '9_15_1_pcu'
+                const defaultPointData = data.find(item => item.label === '9_15_1_pcu');
+                if (defaultPointData) {
+                    showPointDetails(defaultPointData);
+                }
+
+                // Function to show point details
+                function showPointDetails(pointData) {
+                    const detailsDiv = document.getElementById('pointDetails');
+                    const detailsContent = document.getElementById('detailsContent');
+                    detailsDiv.style.display = 'block';
+                    
+                    // Clear previous content
+                    detailsContent.innerHTML = '';
+
+                    // Create two columns
+                    const leftColumn = document.createElement('div');
+                    leftColumn.style.padding = '10px';
+                    leftColumn.style.flex = '1';
+                    leftColumn.style.width = '50%';
+                    leftColumn.style.position = 'relative';
+                    
+                    // Add structure viewer to left column
+                    const structureViewer = document.createElement('div');
+                    structureViewer.id = 'structureViewer';
+                    structureViewer.style.width = '100%';
+                    structureViewer.style.height = '500px';
+                    structureViewer.style.border = '1px solid #ddd';
+                    structureViewer.style.borderRadius = '4px';
+                    leftColumn.appendChild(structureViewer);
+
+                    // Create right column for details
+                    const rightColumn = document.createElement('div');
+                    rightColumn.style.padding = '10px';
+                    rightColumn.style.flex = '1';
+                    rightColumn.style.width = '50%';
+                    rightColumn.style.overflowY = 'auto';
+                    rightColumn.style.height = '500px';
+                    rightColumn.style.backgroundColor = '#f8f9fa';
+                    rightColumn.style.borderRadius = '4px';
+                    rightColumn.style.position = 'relative';
+
+                    // Add columns to content
+                    detailsContent.appendChild(leftColumn);
+                    detailsContent.appendChild(rightColumn);
+
+                    // Load and display structure
+                    fetch(`data/structures/${pointData.label}.cif`)
+                        .then(response => response.text())
+                        .then(content => {
+                            let viewer = $3Dmol.createViewer('structureViewer', {
+                                backgroundColor: 'white'
+                            });
+                            
+                            viewer.addModel(content, "cif");
+                            viewer.setStyle({}, {
+                                sphere: { radius: 0.3 },
+                                stick: { radius: 0.2 }
+                            });
+                            viewer.addUnitCell({
+                                box: true,
+                                lineWidth: 2,
+                                lineColor: 'darkgray',
+                                alpha: 0.8
+                            });
+                            viewer.setBackgroundColor('white');
+                            viewer.zoomTo();
+                            viewer.render();
+                        });
+
+                    // Display data sections
+                    const importantProperties = ['label', 'metal', 'node', 'linker', 'topology', 'substituent', 'coordinate'];
+                    const propertyContainer = document.createElement('div');
+                    propertyContainer.style.marginBottom = '20px';
+                    
+                    importantProperties.forEach(key => {
+                        if (key in pointData) {
+                            const detailItem = document.createElement('div');
+                            detailItem.style.padding = '10px';
+                            detailItem.style.backgroundColor = 'white';
+                            detailItem.style.borderRadius = '4px';
+                            detailItem.style.marginBottom = '5px';
+                            detailItem.innerHTML = `
+                                <strong>${key}:</strong>
+                                <span style="color: #666; margin-left: 5px;">${pointData[key]}</span>
+                            `;
+                            propertyContainer.appendChild(detailItem);
+                        }
+                    });
+
+                    const numericalProperties = [
+                        'CO2 content', 'CO2 capacity', 'q_m', 'Unitcell_volume', 'Density',
+                        'void_fraction', 'AV_cm^3/g', 'ASA_m^2/cm^3', 'ASA_m^2/g', 
+                        'NASA_m^2/g', 'lcd', 'pld', 'CO2 utilization'
+                    ];
+
+                    const numericalContainer = document.createElement('div');
+                    numericalContainer.style.marginBottom = '20px';
+                    
+                    numericalProperties.forEach(key => {
+                        if (key in pointData && pointData[key] !== '') {
+                            const detailItem = document.createElement('div');
+                            detailItem.style.padding = '10px';
+                            detailItem.style.backgroundColor = 'white';
+                            detailItem.style.borderRadius = '4px';
+                            detailItem.style.marginBottom = '5px';
+                            detailItem.innerHTML = `
+                                <strong>${key}:</strong>
+                                <span style="color: #666; margin-left: 5px;">${pointData[key]}</span>
+                            `;
+                            numericalContainer.appendChild(detailItem);
+                        }
+                    });
+
+                    rightColumn.appendChild(propertyContainer);
+                    rightColumn.appendChild(numericalContainer);
+
+                    // Add isotherm plot if data exists
+                    if (Array.isArray(pointData.pressure) && Array.isArray(pointData.isotherm)) {
+                        const isothermDiv = document.createElement('div');
+                        isothermDiv.style.height = '300px';
+                        isothermDiv.style.marginBottom = '15px';
+                        rightColumn.appendChild(isothermDiv);
+
+                        const isothermTrace = {
+                            type: 'scatter',
+                            mode: 'lines+markers',
+                            x: pointData.pressure,
+                            y: pointData.isotherm,
+                            name: 'Isotherm',
+                            line: { color: '#007bff' }
+                        };
+
+                        const isothermLayout = {
+                            title: 'CO2 Isotherm',
+                            xaxis: {
+                                title: 'Pressure (Pa)',
+                                type: 'log'
+                            },
+                            yaxis: {
+                                title: 'CO2 Uptake (mol/kg)',
+                            },
+                            showlegend: true
+                        };
+
+                        Plotly.newPlot(isothermDiv, [isothermTrace], isothermLayout);
+                    }
+
+                    // Add download button
+                    const downloadButton = document.createElement('button');
+                    downloadButton.className = 'filter-button';
+                    downloadButton.innerHTML = 'Download CIF';
+                    downloadButton.style.marginTop = '10px';
+                    downloadButton.onclick = function() {
+                        fetch(`data/structures/${pointData.label}.cif`)
+                            .then(response => response.text())
+                            .then(content => {
+                                const blob = new Blob([content], { type: 'text/plain' });
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `${pointData.label}.cif`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                window.URL.revokeObjectURL(url);
+                            });
+                    };
+                    rightColumn.appendChild(downloadButton);
+                }
+
                 // Function to update the scatter plot
                 function updateScatterPlot() {
                     const xAxis = document.getElementById('xAxis').value;
@@ -453,174 +668,7 @@
                     document.getElementById('scatterPlot').on('plotly_click', function(data) {
                         const pointIndex = data.points[0].pointIndex;
                         const pointData = filteredData[pointIndex];
-                        
-                        // Show details section
-                        const detailsDiv = document.getElementById('pointDetails');
-                        const detailsContent = document.getElementById('detailsContent');
-                        detailsDiv.style.display = 'block';
-                        
-                        // Clear previous content
-                        detailsContent.innerHTML = '';
-
-                        // Create two columns
-                        const leftColumn = document.createElement('div');
-                        leftColumn.style.padding = '10px';
-                        leftColumn.style.flex = '1';
-                        leftColumn.style.width = '50%';
-                        leftColumn.style.position = 'relative';
-                        
-                        // Add structure viewer to left column
-                        const structureViewer = document.createElement('div');
-                        structureViewer.id = 'structureViewer';
-                        structureViewer.style.width = '100%';
-                        structureViewer.style.height = '500px';
-                        structureViewer.style.border = '1px solid #ddd';
-                        structureViewer.style.borderRadius = '4px';
-                        leftColumn.appendChild(structureViewer);
-
-                        // Create right column for details
-                        const rightColumn = document.createElement('div');
-                        rightColumn.style.padding = '10px';
-                        rightColumn.style.flex = '1';
-                        rightColumn.style.width = '50%';
-                        rightColumn.style.overflowY = 'auto';
-                        rightColumn.style.height = '500px';
-                        rightColumn.style.backgroundColor = '#f8f9fa';
-                        rightColumn.style.borderRadius = '4px';
-                        rightColumn.style.position = 'relative';
-
-                        // Add columns to content
-                        detailsContent.appendChild(leftColumn);
-                        detailsContent.appendChild(rightColumn);
-
-                        // Load and display structure
-                        const structureId = pointData.label;
-                        fetch(`data/structures/${structureId}.cif`)
-                            .then(response => response.text())
-                            .then(content => {
-                                let viewer = $3Dmol.createViewer('structureViewer', {
-                                    backgroundColor: 'white'
-                                });
-                                
-                                viewer.addModel(content, "cif");
-                                viewer.setStyle({}, {
-                                    sphere: { radius: 0.3 },
-                                    stick: { radius: 0.2 }
-                                });
-                                viewer.addUnitCell({
-                                    box: true,
-                                    lineWidth: 2,
-                                    lineColor: 'darkgray',
-                                    alpha: 0.8
-                                });
-                                viewer.setBackgroundColor('white');
-                                viewer.zoomTo();
-                                viewer.render();
-                            });
-
-                        // Add isotherm plot if data exists
-                        if (Array.isArray(pointData.pressure) && Array.isArray(pointData.isotherm)) {
-                            const isothermDiv = document.createElement('div');
-                            isothermDiv.style.height = '300px';
-                            isothermDiv.style.marginBottom = '15px';
-                            rightColumn.appendChild(isothermDiv);
-
-                            const isothermTrace = {
-                                type: 'scatter',
-                                mode: 'lines+markers',
-                                x: pointData.pressure,
-                                y: pointData.isotherm,
-                                name: 'Isotherm',
-                                line: { color: '#007bff' }
-                            };
-
-                            const isothermLayout = {
-                                title: 'CO2 Isotherm',
-                                xaxis: {
-                                    title: 'Pressure (Pa)',
-                                    type: 'log'
-                                },
-                                yaxis: {
-                                    title: 'CO2 Uptake (mol/kg)',
-                                },
-                                showlegend: true
-                            };
-
-                            Plotly.newPlot(isothermDiv, [isothermTrace], isothermLayout);
-                        }
-
-                        // Add properties to right column
-                        // First add important properties
-                        const importantProperties = ['label', 'metal', 'node', 'linker', 'topology', 'substituent', 'coordinate'];
-                        const propertyContainer = document.createElement('div');
-                        propertyContainer.style.marginBottom = '20px';
-                        
-                        // Add important properties first
-                        importantProperties.forEach(key => {
-                            if (key in pointData) {
-                                const detailItem = document.createElement('div');
-                                detailItem.style.padding = '10px';
-                                detailItem.style.backgroundColor = 'white';
-                                detailItem.style.borderRadius = '4px';
-                                detailItem.style.marginBottom = '5px';
-                                detailItem.innerHTML = `
-                                    <strong>${key}:</strong>
-                                    <span style="color: #666; margin-left: 5px;">${pointData[key]}</span>
-                                `;
-                                propertyContainer.appendChild(detailItem);
-                            }
-                        });
-
-                        // Add numerical properties
-                        const numericalProperties = [
-                            'CO2 content', 'CO2 capacity', 'q_m', 'Unitcell_volume', 'Density',
-                            'void_fraction', 'AV_cm^3/g', 'ASA_m^2/cm^3', 'ASA_m^2/g', 
-                            'NASA_m^2/g', 'lcd', 'pld', 'CO2 utilization'
-                        ];
-
-                        const numericalContainer = document.createElement('div');
-                        numericalContainer.style.marginBottom = '20px';
-                        
-                        numericalProperties.forEach(key => {
-                            if (key in pointData && pointData[key] !== '') {
-                                const detailItem = document.createElement('div');
-                                detailItem.style.padding = '10px';
-                                detailItem.style.backgroundColor = 'white';
-                                detailItem.style.borderRadius = '4px';
-                                detailItem.style.marginBottom = '5px';
-                                detailItem.innerHTML = `
-                                    <strong>${key}:</strong>
-                                    <span style="color: #666; margin-left: 5px;">${pointData[key]}</span>
-                                `;
-                                numericalContainer.appendChild(detailItem);
-                            }
-                        });
-
-                        // Add containers to right column
-                        rightColumn.appendChild(propertyContainer);
-                        rightColumn.appendChild(numericalContainer);
-
-                        // Add download button at the bottom of right column
-                        const downloadButton = document.createElement('button');
-                        downloadButton.className = 'filter-button';
-                        downloadButton.innerHTML = 'Download CIF';
-                        downloadButton.style.marginTop = '10px';
-                        downloadButton.onclick = function() {
-                            fetch(`data/structures/${structureId}.cif`)
-                                .then(response => response.text())
-                                .then(content => {
-                                    const blob = new Blob([content], { type: 'text/plain' });
-                                    const url = window.URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = `${structureId}.cif`;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    document.body.removeChild(a);
-                                    window.URL.revokeObjectURL(url);
-                                });
-                        };
-                        rightColumn.appendChild(downloadButton);
+                        showPointDetails(pointData);
                     });
                 }
 
